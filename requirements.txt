@@ -1,0 +1,5 @@
+# Python dependencies for the digwar WebSocket server.
+# aiohttp handles HTTP + WebSocket on the same port (Render healthchecks
+# send HEAD requests that the bare `websockets` library cannot answer).
+
+aiohttp>=3.9,<4.0

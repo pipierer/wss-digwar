@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>digwar — tactical wss game</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- ===================== CONNECT SCREEN ===================== -->
+  <section id="screen-connect" class="screen active">
+    <div class="card">
+      <h1>digwar</h1>
+      <p class="subtitle">jeu tactique multijoueur · WebSocket</p>
+      <label for="name-input">Nom de soldat</label>
+      <input id="name-input" type="text" maxlength="16" placeholder="soldat" autocomplete="off">
+      <button id="connect-btn" class="primary">Se connecter</button>
+      <div id="connect-status" class="muted"></div>
+      <div class="hint">ZQSD / flèches : déplacement · E : pelle · F : couteau · Espace : bombe</div>
+    </div>
+  </section>
+
+  <!-- ===================== LOBBY SCREEN ===================== -->
+  <section id="screen-lobby" class="screen">
+    <div class="lobby-wrap">
+      <div class="lobby-left">
+        <h2>Salons disponibles</h2>
+        <div class="lobby-actions">
+          <button id="refresh-rooms" class="ghost">Rafraîchir</button>
+          <button id="quick-join-btn" class="ghost">Rejoindre le 1er ouvert</button>
+          <button id="toggle-mode-btn" class="ghost">Mode: PC</button>
+        </div>
+        <div id="mobile-hint" class="mobile-hint" style="display:none;">
+          <b>Mode Mobile :</b> touche l'écran pour faire apparaître le joystick.
+          Pour déplacer les boutons (pelle/couteau/bombe), tape sur l'icône
+          <b>⚙</b> en haut à droite pendant une partie — les boutons deviennent
+          déplaçables tant que tu veux. Retape sur <b>⚙</b> pour finir ; les
+          positions sont sauvegardées pour les prochaines parties.
+        </div>
+        <div id="room-list" class="room-list"></div>
+      </div>
+      <div class="lobby-right">
+        <h2>Créer un salon</h2>
+        <label>Nom du salon
+          <input id="new-room-name" type="text" maxlength="24" value="Front">
+        </label>
+        <div class="grid2">
+          <label>Largeur
+            <select id="cfg-width">
+              <option value="11">11</option>
+              <option value="15" selected>15</option>
+              <option value="17">17</option>
+              <option value="21">21</option>
+              <option value="25">25</option>
+              <option value="31">31</option>
+            </select>
+          </label>
+          <label>Hauteur
+            <select id="cfg-height">
+              <option value="9">9</option>
+              <option value="11">11</option>
+              <option value="13" selected>13</option>
+              <option value="17">17</option>
+              <option value="21">21</option>
+              <option value="25">25</option>
+            </select>
+          </label>
+          <label>Joueurs max
+            <select id="cfg-max">
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4" selected>4</option>
+              <option value="6">6</option>
+              <option value="8">8</option>
+            </select>
+          </label>
+          <label>Score cible
+            <select id="cfg-score">
+              <option value="3">3</option>
+              <option value="5" selected>5</option>
+              <option value="10">10</option>
+              <option value="15">15</option>
+            </select>
+          </label>
+          <label>Durée (s)
+            <select id="cfg-time">
+              <option value="0">∞</option>
+              <option value="120">120</option>
+              <option value="180" selected>180</option>
+              <option value="300">300</option>
+              <option value="600">600</option>
+            </select>
+          </label>
+        </div>
+        <label class="checkbox-row">
+          <input type="checkbox" id="cfg-regen">
+          Régénération de la dirt toutes les
+          <select id="cfg-regen-interval">
+            <option value="10">10s</option>
+            <option value="20">20s</option>
+            <option value="30" selected>30s</option>
+            <option value="60">60s</option>
+            <option value="120">120s</option>
+          </select>
+        </label>
+        <button id="create-room-btn" class="primary">Créer</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ROOM (PRE-GAME) SCREEN ===================== -->
+  <section id="screen-room" class="screen">
+    <div class="room-wrap">
+      <div class="room-left">
+        <h2 id="room-title">Room</h2>
+        <div id="room-meta" class="muted"></div>
+        <h3>Joueurs</h3>
+        <div id="room-players" class="room-players"></div>
+        <h3>Équipe</h3>
+        <div class="team-buttons">
+          <button id="team-blue-btn" class="ghost">Bleu</button>
+          <button id="team-red-btn" class="ghost">Rouge</button>
+          <button id="team-none-btn" class="ghost">Solo</button>
+        </div>
+        <div class="room-actions">
+          <button id="start-game-btn" class="primary">Lancer la partie</button>
+          <button id="leave-room-btn" class="ghost">Quitter</button>
+        </div>
+      </div>
+      <div class="room-right">
+        <h3>Chat</h3>
+        <div id="room-chat" class="room-chat"></div>
+        <input id="chat-input" type="text" maxlength="200" placeholder="Message..." autocomplete="off">
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== GAME SCREEN ===================== -->
+  <section id="screen-game" class="screen">
+    <div class="game-wrap">
+      <canvas id="game-canvas"></canvas>
+      <div id="game-overlay" class="game-overlay" style="display:none;">
+        <div class="text"></div>
+      </div>
+
+      <!-- HUD overlay -->
+      <div id="hud" class="hud">
+        <div class="hud-top">
+          <div class="hud-block">
+            <div class="hud-label">Soldat</div>
+            <div id="hud-name" class="hud-value">—</div>
+          </div>
+          <div class="hud-block">
+            <div class="hud-label">Score</div>
+            <div id="hud-score" class="hud-value big">0</div>
+          </div>
+          <div class="hud-block">
+            <div class="hud-label">K/D</div>
+            <div class="hud-value"><span id="hud-kills">0</span>/<span id="hud-deaths">0</span></div>
+          </div>
+          <div class="hud-block">
+            <div class="hud-label">Temps</div>
+            <div id="hud-time" class="hud-value">∞</div>
+          </div>
+          <div class="hud-block">
+            <div class="hud-label">Ping</div>
+            <div id="hud-ping" class="hud-value muted">—</div>
+          </div>
+        </div>
+
+        <div class="hud-bottom">
+          <div class="hud-block hp">
+            <div class="hud-label">Santé</div>
+            <div class="hp-row">
+              <div class="hp-bar-bg"><div id="hud-hp-bar" class="hp-bar-fg" style="width:100%"></div></div>
+              <span id="hud-hp">100</span>
+            </div>
+          </div>
+          <div id="hud-respawn" class="hud-respawn"></div>
+        </div>
+
+        <div id="hud-board" class="hud-board"></div>
+
+        <div class="hud-controls">
+          <div class="ctrl"><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> déplacement</div>
+          <div class="ctrl"><kbd>E</kbd> pelle · <kbd>F</kbd> couteau · <kbd>Espace</kbd> bombe</div>
+          <button id="back-to-lobby" class="ghost small">Quitter</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SCRIPTS ===================== -->
+  <script src="/js/constants.js"></script>
+  <script src="/js/net.js"></script>
+  <script src="/js/input.js"></script>
+  <script src="/js/world.js"></script>
+  <script src="/js/player.js"></script>
+  <script src="/js/fov.js"></script>
+  <script src="/js/interpolate.js"></script>
+  <script src="/js/render.js"></script>
+  <script src="/js/hud.js"></script>
+  <script src="/js/audio.js"></script>
+  <script src="/js/mobile.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html>

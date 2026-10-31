@@ -1,0 +1,29 @@
+# render.yaml — Render service definition for digwar.
+#
+# Deploy with:  render deploy  (or auto-deploy from the GitHub repo).
+# This file is auto-discovered by Render when present at the repo root.
+
+services:
+  - type: web
+    name: digwar
+    runtime: python
+    plan: free
+    region: frankfurt
+    branch: main
+    rootDir: digwar_wss
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m server.main
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: HOST
+        value: 0.0.0.0
+      # PORT is injected automatically by Render.
+      - key: WEB_ROOT
+        value: web
+    # Free tier: 512 MB RAM, 0.1 CPU. Spins down after 15 min of inactivity.
+    # The first request after spin-down takes ~30s to wake up.
